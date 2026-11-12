@@ -466,11 +466,25 @@ export function openaiToOpenAIResponsesRequest(model, body, stream, credentials)
   const rf = body.response_format;
   if (rf && rf.type === "json_schema" && rf.json_schema && rf.json_schema.schema) {
     result.text = { format: { type: "json_schema", name: rf.json_schema.name || "response", strict: rf.json_schema.strict !== false, schema: rf.json_schema.schema } };
-  } else if (rf && rf.type === "json_object") {
+  } else if (rf && rf.type === "json_object" && inputMentionsJson(result.input)) {
+    // The Responses API rejects json_object (400) unless an input message says
+    // "json"; Chat Completions also counts the system message, which became
+    // `instructions` here. Without the word in the input, keep the request as
+    // it was before this mapping (no text.format) instead of failing it.
     result.text = { format: { type: "json_object" } };
   }
 
   return result;
+}
+
+function inputMentionsJson(input) {
+  const texts = [];
+  for (const item of input || []) {
+    if (typeof item?.content === "string") texts.push(item.content);
+    else if (Array.isArray(item?.content)) for (const c of item.content) if (typeof c?.text === "string") texts.push(c.text);
+    if (typeof item?.output === "string") texts.push(item.output);
+  }
+  return texts.some((t) => /json/i.test(t));
 }
 
 // Register both directions

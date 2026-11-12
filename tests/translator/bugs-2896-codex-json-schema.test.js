@@ -34,12 +34,20 @@ describe("bug #2896: Chat Completions response_format → Responses text.format"
     expect(out.text.format.strict).toBe(true);
   });
 
-  it("json_object stays json_object", () => {
+  it("json_object stays json_object when an input message says json", () => {
     const out = toResponses({
-      messages: [{ role: "user", content: "2 people" }],
+      messages: [{ role: "user", content: "2 people, as JSON" }],
       response_format: { type: "json_object" },
     });
     expect(out.text).toEqual({ format: { type: "json_object" } });
+  });
+
+  it("json_object with json only in the system message adds no text.format (Responses would reject it)", () => {
+    const out = toResponses({
+      messages: [{ role: "system", content: "Answer in JSON." }, { role: "user", content: "2 people" }],
+      response_format: { type: "json_object" },
+    });
+    expect(out.text).toBeUndefined();
   });
 
   it("no response_format adds no text field", () => {
